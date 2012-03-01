@@ -1,11 +1,10 @@
-// Copyright 2012 Google Inc. All Rights Reserved.
-// Author: bleper@google.com (Bartosz Leper)
-
 package board
 
 import (
-	"testing"
 	"image"
+	"strings"
+	"testing"
+	"testutil"
 )
 
 func TestDirectionNames(t *testing.T) {
@@ -20,6 +19,37 @@ func TestDirectionNames(t *testing.T) {
 				uint8(dir), dir.String(), name)
 		}
 	}
+}
+
+func TestDirectionDecomposing(t *testing.T) {
+	testCases := map[Direction][]Direction{
+		None:          {},
+		N:             {N},
+		S:             {S},
+		E:             {E},
+		W:             {W},
+		S | E:         {E, S},
+		N | E | S | W: {N, E, S, W},
+	}
+	for dir, expected := range testCases {
+		decomposition := dir.Decompose()
+		if !dirArrayEquals(decomposition, expected) {
+			t.Errorf("Decomposition of %v is %v, expected %v",
+				dir, decomposition, expected)
+		}
+	}
+}
+
+func dirArrayEquals(a1, a2 []Direction) bool {
+	if len(a1) != len(a2) {
+		return false
+	}
+	for i := range a1 {
+		if a1[i] != a2[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func performFieldValueTests(t *testing.T, f *Field, visited bool) {
@@ -82,7 +112,7 @@ type walkingTest struct {
 var walkingTests []walkingTest = []walkingTest{
 
 	// + +
-	// | |
+	// |X|
 	// + +
 	{
 		Board: boardImpl{
@@ -96,7 +126,7 @@ var walkingTests []walkingTest = []walkingTest{
 	// +-+-+
 	// |   |
 	// + + +
-	// | | |
+	// |*|x|
 	// + + +
 	{
 		Board: boardImpl{
@@ -111,9 +141,9 @@ var walkingTests []walkingTest = []walkingTest{
 	},
 
 	// +-+-+
-	//     |
+	//  *  |
 	// +-+ +
-	// |X|
+	// |#|x
 	// +-+-+
 	{
 		Board: boardImpl{
@@ -128,9 +158,9 @@ var walkingTests []walkingTest = []walkingTest{
 	},
 
 	// +-+-+
-	//
+	//  * x
 	// +-+-+
-	// |X X|
+	// |# #|
 	// +-+-+
 	{
 		Board: boardImpl{
@@ -143,32 +173,89 @@ var walkingTests []walkingTest = []walkingTest{
 		},
 		VisitMatrix: [][]bool{{true, true}, {false, false}},
 	},
+
+	// + +
+	// |*|
+	// + +
+	// |x|
+	// + +
+	{
+		Board: boardImpl{
+			fields: [][]Field{
+				{Field(N | S)},
+				{Field(N | S)},
+			},
+			entrance: image.Pt(0, 0),
+			exit:     image.Pt(0, 1),
+		},
+		VisitMatrix: [][]bool{{true}, {true}},
+	},
+
+	// +-+-+
+	//  x *
+	// +-+-+
+	{
+		Board: boardImpl{
+			fields: [][]Field{
+				{Field(E | W), Field(E | W)},
+			},
+			entrance: image.Pt(1, 0),
+			exit:     image.Pt(0, 0),
+		},
+		VisitMatrix: [][]bool{{true, true}},
+	},
+
+	// +-+-+-+
+	// |     |
+	// + + + +
+	// |x|*| |
+	// + + +-+
+	{
+		Board: boardImpl{
+			fields: [][]Field{
+				{Field(E | S), Field(E | S | W), Field(S | W)},
+				{Field(N | S), Field(N | S), Field(N)},
+			},
+			entrance: image.Pt(1, 1),
+			exit:     image.Pt(0, 1),
+		},
+		VisitMatrix: [][]bool{{true, true, true}, {true, true, true}},
+	},
 }
 
 func TestWalking(t *testing.T) {
 	for i, test := range walkingTests {
-		visitMatrix := test.Board.Walk()
-		if !matricesEqual(visitMatrix, test.VisitMatrix) {
+		visitMatrix, error := test.Board.Walk()
+		if error != nil {
+			t.Errorf("Error in test %d: %v", i, error)
+			continue
+		}
+		if visitMatrix == nil {
+			t.Errorf("Visit matrix for test %d is nil. "+
+				"Something terrible has happened", i)
+			continue
+		}
+		if !testutil.MatricesEqual(visitMatrix, test.VisitMatrix) {
 			t.Errorf("Visit matrix for test %d is %v, expected %v",
 				i, visitMatrix, test.VisitMatrix)
 		}
 	}
 }
 
-func matricesEqual(m1, m2 [][]bool) bool {
-	if len(m1) != len(m2) {
-		return false
+func TestWalkingFallsOffBoard(t *testing.T) {
+	// +-+ +-+
+	//  *
+	// +-+-+-+
+	board := boardImpl{
+		fields: [][]Field{
+			{Field(E | W), Field(N | E | W), Field(E | W)},
+		},
+		entrance: image.Pt(0, 0),
+		exit:     image.Pt(2, 0),
 	}
-	for i, row1 := range m1 {
-		row2 := m2[i]
-		if len(row1) != len(row2) {
-			return false
-		}
-		for j, item1 := range row1 {
-			if item1 != row2[j] {
-				return false
-			}
-		}
+	_, error := board.Walk()
+	expectedPointStr := image.Pt(1, -1).String()
+	if error == nil || !strings.Contains(error.String(), expectedPointStr) {
+		t.Errorf("Error is %q, expected to contain %s", error, expectedPointStr)
 	}
-	return true
 }
