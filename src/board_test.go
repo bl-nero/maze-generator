@@ -102,6 +102,13 @@ func TestCreatingBoard(t *testing.T) {
 			}
 		}
 	}
+	if !board.Entrance().Eq(image.Pt(0, 0)) {
+		t.Errorf("Entrance is %v, expected %v", board.Entrance(), image.Pt(0, 0))
+	}
+	expectedExit := image.Pt(width-1, height-1)
+	if !board.Exit().Eq(expectedExit) {
+		t.Errorf("Exit is %v, expected %v", board.Exit(), expectedExit)
+	}
 }
 
 type walkingTest struct {
@@ -225,6 +232,9 @@ var walkingTests []walkingTest = []walkingTest{
 
 func TestWalking(t *testing.T) {
 	for i, test := range walkingTests {
+		if !test.Board.Validate() {
+			t.Fatalf("Test %d is broken:\n%v", i, &test.Board);
+		}
 		visitMatrix, error := test.Board.Walk()
 		if error != nil {
 			t.Errorf("Error in test %d: %v", i, error)
@@ -253,9 +263,118 @@ func TestWalkingFallsOffBoard(t *testing.T) {
 		entrance: image.Pt(0, 0),
 		exit:     image.Pt(2, 0),
 	}
+	if !board.Validate() {
+		t.Fatal("Test is broken");
+	}
 	_, error := board.Walk()
 	expectedPointStr := image.Pt(1, -1).String()
 	if error == nil || !strings.Contains(error.String(), expectedPointStr) {
 		t.Errorf("Error is %q, expected to contain %s", error, expectedPointStr)
+	}
+}
+
+type validationTest struct {
+	Fields [][]Field
+	Ok     bool
+}
+
+var validationTests []validationTest = []validationTest{
+	// +-++-+
+	// |    |
+	// + ++-+
+	// + ++-+
+	// | || |
+	// +-++-+
+	{
+		Fields: [][]Field{
+			{Field(E | S), Field(W)},
+			{Field(N), Field(None)},
+		},
+		Ok: true,
+	},
+
+	// +-++-+
+	// | |  |
+	// +-++-+
+	{
+		Fields: [][]Field{
+			{Field(None), Field(W)},
+		},
+		Ok: false,
+	},
+
+	// +-+
+	// | |
+	// +-+
+	// + +
+	// | |
+	// +-+
+	{
+		Fields: [][]Field{
+			{Field(None)},
+			{Field(N)},
+		},
+		Ok: false,
+	},
+}
+
+func TestValidation(t *testing.T) {
+	for i, test := range validationTests {
+		board := boardImpl{fields: test.Fields}
+		validated := board.Validate()
+		if validated != test.Ok {
+			t.Errorf("Validation %d resulted in %v, expected %v",
+				i, validated, test.Ok)
+		}
+	}
+}
+
+type complexityTest struct {
+	Fields     [][]Field
+	Complexity int
+}
+
+var complexityTests []complexityTest = []complexityTest{
+	// +-+-+-+
+	// |   | |
+	// + + + +
+	// | |   |
+	// +-+-+-+
+	{
+		Fields: [][]Field{
+			{Field(E | S), Field(W | S), Field(S)},
+			{Field(N), Field(E | N), Field(W | N)},
+		},
+		Complexity: 0,
+	},
+
+	// +-+-+-+-+-+
+	// | | |     |
+	// + + + + +-+
+	// |     |   |
+	// +-+ +-+-+-+
+	// |         |
+	// +---------+
+	{
+		Fields: [][]Field{
+			{Field(S), Field(S), Field(S|E), Field(S|E|W), Field(W)},
+			{Field(N|E), Field(N|E|S|W), Field(N|W), Field(N|E), Field(W)},
+			{Field(E), Field(N|E|W), Field(E|W), Field(E|W), Field(W)},
+		},
+		Complexity:3,
+	},
+}
+
+func TestComplexity(t *testing.T) {
+	for i, test := range complexityTests {
+		board := boardImpl{fields: test.Fields}
+		if !board.Validate() {
+			t.Fatalf("Test %d is broken:\n%v", i, &board);
+		}
+		complexity := board.Complexity()
+		if complexity != test.Complexity {
+			t.Errorf("Complexity of test %d is %d, expected %d",
+				i, complexity, test.Complexity)
+		}
 	}
 }

@@ -94,11 +94,17 @@ type Board interface {
 	Entrance() *image.Point
 	Exit() *image.Point
 	Walk() ([][]bool, os.Error)
-	//String() string
+	String() string
+	Validate() bool
+	Complexity() int
 }
 
 func New(width, height int) Board {
-	board := boardImpl{fields: make([][]Field, height)}
+	board := boardImpl{
+		fields:   make([][]Field, height),
+		entrance: image.Pt(0, 0),
+		exit:     image.Pt(width-1, height-1),
+	}
 	for i := range board.fields {
 		board.fields[i] = make([]Field, width)
 	}
@@ -198,4 +204,39 @@ func (self *boardImpl) walkInternal(visitMatrix [][]bool, p image.Point) os.Erro
 		}
 	}
 	return nil
+}
+
+func (self *boardImpl) Validate() bool {
+	for y := 0; y < self.Height(); y++ {
+		y2 := y + 1
+		for x := 0; x < self.Width(); x++ {
+			dir := self.fields[y][x].Direction()
+			x2 := x + 1
+			if x2 < self.Width() {
+				dir2 := self.fields[y][x2].Direction()
+				if (dir&E != None) != (dir2&W != None) {
+					return false
+				}
+			}
+			if y2 < self.Height() {
+				dir2 := self.fields[y2][x].Direction()
+				if (dir&S != None) != (dir2&N != None) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (self *boardImpl) Complexity() int {
+	complexity := 0
+	for _, row := range self.fields {
+		for _,field := range row {
+			if len(field.Direction().Decompose()) > 2 {
+				complexity++
+			}
+		}
+	}
+	return complexity
 }
