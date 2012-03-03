@@ -1,9 +1,33 @@
 package generator
 
 import (
+	"container/heap"
+	"image"
 	"testing"
 	"testutil"
 )
+
+func TestFieldHeap(t *testing.T) {
+	numbers := []int{4, 9, 1, 7, 3, 5, 2, 7}
+	expected := []int{1, 2, 3, 4, 5, 7, 7, 9}
+	h := new(fieldHeap)
+	heap.Init(h)
+	for _, n := range numbers {
+		heap.Push(h, fieldHeapElement{image.Pt(n*2, n*3), n})
+	}
+	for i, n := range expected {
+		actual, _ := heap.Pop(h).(fieldHeapElement)
+		expectedCoords := image.Pt(n*2, n*3)
+		if !actual.Coords.Eq(expectedCoords) {
+			t.Errorf("Coords of element %d are %v, expected %v",
+				i, actual.Coords, expectedCoords)
+		}
+		if actual.Weight != n {
+			t.Errorf("Weight of element %d is %d, expected %d",
+				i, actual.Weight, n)
+		}
+	}
+}
 
 func TestGenerating(t *testing.T) {
 	dump := false
@@ -16,7 +40,7 @@ func TestGenerating(t *testing.T) {
 		t.Errorf("Board height is %d, expected %d", board.Height(), height)
 	}
 	if !board.Validate() {
-		t.Fatalf("Board doesn't validate:\n%v", board);
+		t.Fatalf("Board doesn't validate:\n%v", board)
 	}
 	visitMatrix, error := board.Walk()
 	if error != nil {
