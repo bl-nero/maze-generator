@@ -2,9 +2,8 @@ package generator
 
 import (
 	"board"
+	"container/heap"
 	"image"
-	"fmt"
-	"reflect"
 )
 
 type fieldHeapElement struct {
@@ -15,12 +14,7 @@ type fieldHeapElement struct {
 type fieldHeap []fieldHeapElement
 
 func (self *fieldHeap) Push(x interface{}) {
-	elem, ok := x.(fieldHeapElement)
-	if !ok {
-		panic(fmt.Sprintf("Tried to push %s into a fieldHeap",
-			reflect.TypeOf(x).Name()))
-	}
-	*self = append(*self, elem)
+	*self = append(*self, x.(fieldHeapElement))
 }
 
 func (self *fieldHeap) Pop() interface{} {
@@ -35,32 +29,42 @@ func (self fieldHeap) Less(i, j int) bool { return self[i].Weight < self[j].Weig
 func (self fieldHeap) Swap(i, j int)      { self[i], self[j] = self[j], self[i] }
 
 func Generate(width, height int) board.Board {
+	if width < 1 || height < 1 {
+		return nil
+	}
+
 	b := board.New(width, height)
-	for y := 1; y < height-1; y++ {
-		for x := 0; x < width; x++ {
-			b.At(x, y).SetDirection(board.N | board.S)
+	boardRectangle := image.Rect(0, 0, width, height)
+	fieldQueue := new(fieldHeap)
+	heap.Init(fieldQueue)
+	heap.Push(fieldQueue, fieldHeapElement{*b.Entrance(), 0})
+	currentWeight := 1
+
+	for fieldQueue.Len() > 0 {
+		coords := heap.Pop(fieldQueue).(fieldHeapElement).Coords
+		field := b.At(coords.X, coords.Y)
+		possibleDirections := field.Direction().Negate().Decompose()
+		pickedDirection := board.None
+		var nextCoords image.Point
+		for _, dir := range possibleDirections {
+			delta, _ := dir.Delta()
+			possibleCoords := coords.Add(delta)
+			if possibleCoords.In(boardRectangle) &&
+				b.At(possibleCoords.X, possibleCoords.Y).Direction() ==
+					board.None {
+				pickedDirection = dir
+				nextCoords = possibleCoords
+				break
+			}
+		}
+		if pickedDirection != board.None {
+			nextField := b.At(nextCoords.X, nextCoords.Y)
+			field.AddDirection(pickedDirection)
+			nextField.AddDirection(pickedDirection.Opposite())
+			heap.Push(fieldQueue, fieldHeapElement{nextCoords, currentWeight})
+			heap.Push(fieldQueue, fieldHeapElement{coords, currentWeight})
 		}
 	}
-	for x := 0; x < width; x++ {
-		var dir board.Direction
-		if x%2 == 0 {
-			dir = board.S | board.E
-		} else {
-			dir = board.S | board.W
-		}
-		b.At(x, 0).SetDirection(dir)
-		if x%2 == 0 {
-			dir = board.N | board.W
-		} else {
-			dir = board.N | board.E
-		}
-		b.At(x, height-1).SetDirection(dir)
-	}
-	*b.Entrance() = image.Pt(0, height-1)
-	if width%2 == 0 {
-		*b.Exit() = image.Pt(width-1, height-1)
-	} else {
-		*b.Exit() = image.Pt(width-1, 0)
-	}
+
 	return b
 }

@@ -16,7 +16,7 @@ func TestFieldHeap(t *testing.T) {
 		heap.Push(h, fieldHeapElement{image.Pt(n*2, n*3), n})
 	}
 	for i, n := range expected {
-		actual, _ := heap.Pop(h).(fieldHeapElement)
+		actual := heap.Pop(h).(fieldHeapElement)
 		expectedCoords := image.Pt(n*2, n*3)
 		if !actual.Coords.Eq(expectedCoords) {
 			t.Errorf("Coords of element %d are %v, expected %v",

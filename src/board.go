@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"image"
 	"os"
+	"strings"
 )
 
 type Direction uint8
 
+const None Direction = 0
 const (
-	None Direction = 0
-	N    Direction = 1 << iota
+	N Direction = 1 << iota
 	E
 	S
 	W
@@ -25,6 +26,9 @@ var dirNames map[Direction]string = map[Direction]string{N: "N", E: "E", S: "S",
 func (self Direction) String() string {
 	if self == None {
 		return "None"
+	}
+	if uint8(self)&^directionMask != 0 {
+		return "(illegal)"
 	}
 	res := ""
 	for dir, name := range dirNames {
@@ -51,6 +55,20 @@ func (self Direction) Delta() (delta image.Point, error os.Error) {
 	return
 }
 
+func (self Direction) Opposite() Direction {
+	switch self {
+	case N:
+		return S
+	case E:
+		return W
+	case S:
+		return N
+	case W:
+		return E
+	}
+	return None
+}
+
 func (self Direction) Decompose() []Direction {
 	result := make([]Direction, 0, 4)
 	for d := minDirection; d <= maxDirection; d <<= 1 {
@@ -59,6 +77,10 @@ func (self Direction) Decompose() []Direction {
 		}
 	}
 	return result
+}
+
+func (self Direction) Negate() Direction {
+	return ^self & Direction(directionMask)
 }
 
 type Field uint8
@@ -95,6 +117,7 @@ type Board interface {
 	Exit() *image.Point
 	Walk() ([][]bool, os.Error)
 	String() string
+	PrettyString() string
 	Validate() bool
 	Complexity() int
 }
@@ -172,6 +195,56 @@ func (self *boardImpl) String() string {
 	return buf.String()
 }
 
+func (self *boardImpl) PrettyString() string {
+	var buf bytes.Buffer
+	for y, row := range self.fields {
+		for _, field := range row {
+			if field.Direction()&N != 0 {
+				buf.WriteString("+  ")
+			} else {
+				buf.WriteString("+--")
+			}
+		}
+		buf.WriteString("+\n")
+
+		for x, field := range row {
+			dir := field.Direction()
+			if dir&W != 0 {
+				buf.WriteString(" ")
+			} else {
+				buf.WriteString("|")
+			}
+			point := image.Pt(x, y)
+			if point.Eq(*self.Entrance()) {
+				buf.WriteString("*")
+			} else {
+				buf.WriteString(" ")
+			}
+			if point.Eq(*self.Exit()) {
+				buf.WriteString("x")
+			} else {
+				buf.WriteString(" ")
+			}
+			/*switch {
+			case point.Eq(*self.Entrance()) && point.Eq(*self.Exit()):
+				buf.WriteString("X")
+			case point.Eq(*self.Entrance()):
+				buf.WriteString("*")
+			case point.Eq(*self.Exit()):
+				buf.WriteString("x")
+			default:
+				buf.WriteString(" ")
+			}*/
+		}
+		buf.WriteString("|\n")
+	}
+
+	buf.WriteString("+")
+	buf.WriteString(strings.Repeat("---", self.Width()-1))
+	buf.WriteString("--+\n")
+	return buf.String()
+}
+
 func (self *boardImpl) Walk() (visitMatrix [][]bool, error os.Error) {
 	visitMatrix = make([][]bool, self.Height())
 	for i := range visitMatrix {
@@ -232,7 +305,7 @@ func (self *boardImpl) Validate() bool {
 func (self *boardImpl) Complexity() int {
 	complexity := 0
 	for _, row := range self.fields {
-		for _,field := range row {
+		for _, field := range row {
 			if len(field.Direction().Decompose()) > 2 {
 				complexity++
 			}

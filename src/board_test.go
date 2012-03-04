@@ -9,16 +9,29 @@ import (
 
 func TestDirectionNames(t *testing.T) {
 	testCases := map[Direction]string{
-		None:          "None",
-		S:             "S",
-		N | W:         "NW",
-		N | E | S | W: "NESW"}
+		None:                          "None",
+		S:                             "S",
+		N | W:                         "NW",
+		N | E | S | W:                 "NESW",
+		Direction(directionMask) << 1: "(illegal)"}
 	for dir, name := range testCases {
 		if dir.String() != name {
 			t.Errorf("Name of direction %d is %q, expected %q",
 				uint8(dir), dir.String(), name)
 		}
 	}
+}
+
+func dirArrayEquals(a1, a2 []Direction) bool {
+	if len(a1) != len(a2) {
+		return false
+	}
+	for i := range a1 {
+		if a1[i] != a2[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestDirectionDecomposing(t *testing.T) {
@@ -40,16 +53,18 @@ func TestDirectionDecomposing(t *testing.T) {
 	}
 }
 
-func dirArrayEquals(a1, a2 []Direction) bool {
-	if len(a1) != len(a2) {
-		return false
-	}
-	for i := range a1 {
-		if a1[i] != a2[i] {
-			return false
+var dirNegationTests [][]Direction = [][]Direction{
+	{None, N | E | S | W}, {N, E | S | W}, {W | S, N | E},
+}
+
+func TestDirectionNegation(t *testing.T) {
+	for _, test := range dirNegationTests {
+		neg := test[0].Negate()
+		if neg != test[1] {
+			t.Errorf("Negation of %v is %v, expected %v",
+				test[0], neg, test[1])
 		}
 	}
-	return true
 }
 
 func performFieldValueTests(t *testing.T, f *Field, visited bool) {
@@ -233,7 +248,7 @@ var walkingTests []walkingTest = []walkingTest{
 func TestWalking(t *testing.T) {
 	for i, test := range walkingTests {
 		if !test.Board.Validate() {
-			t.Fatalf("Test %d is broken:\n%v", i, &test.Board);
+			t.Fatalf("Test %d is broken:\n%v", i, &test.Board)
 		}
 		visitMatrix, error := test.Board.Walk()
 		if error != nil {
@@ -264,7 +279,7 @@ func TestWalkingFallsOffBoard(t *testing.T) {
 		exit:     image.Pt(2, 0),
 	}
 	if !board.Validate() {
-		t.Fatal("Test is broken");
+		t.Fatal("Test is broken")
 	}
 	_, error := board.Walk()
 	expectedPointStr := image.Pt(1, -1).String()
@@ -357,11 +372,11 @@ var complexityTests []complexityTest = []complexityTest{
 	// +---------+
 	{
 		Fields: [][]Field{
-			{Field(S), Field(S), Field(S|E), Field(S|E|W), Field(W)},
-			{Field(N|E), Field(N|E|S|W), Field(N|W), Field(N|E), Field(W)},
-			{Field(E), Field(N|E|W), Field(E|W), Field(E|W), Field(W)},
+			{Field(S), Field(S), Field(S | E), Field(S | E | W), Field(W)},
+			{Field(N | E), Field(N | E | S | W), Field(N | W), Field(N | E), Field(W)},
+			{Field(E), Field(N | E | W), Field(E | W), Field(E | W), Field(W)},
 		},
-		Complexity:3,
+		Complexity: 3,
 	},
 }
 
@@ -369,7 +384,7 @@ func TestComplexity(t *testing.T) {
 	for i, test := range complexityTests {
 		board := boardImpl{fields: test.Fields}
 		if !board.Validate() {
-			t.Fatalf("Test %d is broken:\n%v", i, &board);
+			t.Fatalf("Test %d is broken:\n%v", i, &board)
 		}
 		complexity := board.Complexity()
 		if complexity != test.Complexity {
