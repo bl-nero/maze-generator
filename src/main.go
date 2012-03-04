@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"generator"
 	"os"
+	"rand"
 	"strconv"
+	"time"
 )
 
 func printUsage() {
@@ -21,6 +23,7 @@ func getIntArg(index int, name string) (val int, error os.Error) {
 }
 
 func main() {
+	rand.Seed(time.Nanoseconds())
 	if len(os.Args) < 3 {
 		printUsage()
 		return

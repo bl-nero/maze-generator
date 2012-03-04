@@ -4,6 +4,7 @@ import (
 	"board"
 	"container/heap"
 	"image"
+	"rand"
 )
 
 type fieldHeapElement struct {
@@ -37,8 +38,7 @@ func Generate(width, height int) board.Board {
 	boardRectangle := image.Rect(0, 0, width, height)
 	fieldQueue := new(fieldHeap)
 	heap.Init(fieldQueue)
-	heap.Push(fieldQueue, fieldHeapElement{*b.Entrance(), 0})
-	currentWeight := 1
+	heap.Push(fieldQueue, fieldHeapElement{*b.Entrance(), rand.Int()})
 
 	for fieldQueue.Len() > 0 {
 		coords := heap.Pop(fieldQueue).(fieldHeapElement).Coords
@@ -61,8 +61,8 @@ func Generate(width, height int) board.Board {
 			nextField := b.At(nextCoords.X, nextCoords.Y)
 			field.AddDirection(pickedDirection)
 			nextField.AddDirection(pickedDirection.Opposite())
-			heap.Push(fieldQueue, fieldHeapElement{nextCoords, currentWeight})
-			heap.Push(fieldQueue, fieldHeapElement{coords, currentWeight})
+			heap.Push(fieldQueue, fieldHeapElement{nextCoords, rand.Int()})
+			heap.Push(fieldQueue, fieldHeapElement{coords, rand.Int()})
 		}
 	}
 
