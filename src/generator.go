@@ -46,6 +46,7 @@ func Generate(width, height int) board.Board {
 		coords := heap.Pop(fieldQueue).(fieldHeapElement).Coords
 		field := b.At(coords.X, coords.Y)
 		possibleDirections := field.Direction().Negate().Decompose()
+		shuffleDirections(possibleDirections)
 		pickedDirection := board.None
 		var nextCoords image.Point
 		for _, dir := range possibleDirections {
@@ -72,4 +73,11 @@ func Generate(width, height int) board.Board {
 	b.At(b.Exit().X, b.Exit().Y).AddDirection(board.S)
 
 	return b
+}
+
+func shuffleDirections(directions []board.Direction) {
+	for i := 0; i < len(directions); i++ {
+		j := rand.Intn(i + 1)
+		directions[i], directions[j] = directions[j], directions[i]
+	}
 }

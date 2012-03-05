@@ -30,6 +30,7 @@ func drawToFile(b board.Board, fileName string) os.Error {
 	if error != nil {
 		return error
 	}
+	fmt.Printf("Complexity: %d\n", b.Complexity())
 	img := painter.Paint(b, solution, 10, 2)
 	file, error := os.Create(fileName)
 	defer file.Close()
