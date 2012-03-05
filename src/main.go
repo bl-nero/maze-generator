@@ -26,7 +26,11 @@ func getIntArg(index int, name string) (val int, error os.Error) {
 }
 
 func drawToFile(b board.Board, fileName string) os.Error {
-	img := painter.Paint(b, 10, 2)
+	solution, error := b.Walk(true)
+	if error != nil {
+		return error
+	}
+	img := painter.Paint(b, solution, 10, 2)
 	file, error := os.Create(fileName)
 	defer file.Close()
 	if error != nil {
@@ -57,7 +61,11 @@ func main() {
 	}
 	b := generator.Generate(width, height)
 	if len(os.Args) == 4 {
-		drawToFile(b, os.Args[3])
+		error = drawToFile(b, os.Args[3])
+		if error != nil {
+			fmt.Fprintf(os.Stderr,
+				"Error while drawing the maze: %v", error)
+		}
 	} else {
 		fmt.Println(b.PrettyString())
 	}

@@ -128,6 +128,7 @@ func TestCreatingBoard(t *testing.T) {
 
 type walkingTest struct {
 	Board       boardImpl
+	Solve       bool
 	VisitMatrix [][]bool
 }
 
@@ -243,6 +244,53 @@ var walkingTests []walkingTest = []walkingTest{
 		},
 		VisitMatrix: [][]bool{{true, true, true}, {true, true, true}},
 	},
+
+	// +-+-+
+	//  *|x
+	// +-+-+ (solve)
+	{
+		Board: boardImpl{
+			fields:   [][]Field{{Field(W), Field(E)}},
+			entrance: image.Pt(0, 0),
+			exit:     image.Pt(1, 0),
+		},
+		Solve:       true,
+		VisitMatrix: [][]bool{{false, false}},
+	},
+
+	// +-+-+
+	//  * x
+	// +-+-+ (solve)
+	{
+		Board: boardImpl{
+			fields:   [][]Field{{Field(E | W), Field(E | W)}},
+			entrance: image.Pt(0, 0),
+			exit:     image.Pt(1, 0),
+		},
+		Solve:       true,
+		VisitMatrix: [][]bool{{true, true}},
+	},
+
+	// + + +-+
+	// |x|*| |
+	// + + + |
+	// |     |
+	// +-+-+-+ (solve)
+	{
+		Board: boardImpl{
+			fields: [][]Field{
+				{Field(N | S), Field(N | S), Field(S)},
+				{Field(N | E), Field(N | E | W), Field(N | W)},
+			},
+			entrance: image.Pt(1, 0),
+			exit:     image.Pt(0, 0),
+		},
+		Solve: true,
+		VisitMatrix: [][]bool{
+			{true, true, false},
+			{true, true, false},
+		},
+	},
 }
 
 func TestWalking(t *testing.T) {
@@ -250,7 +298,7 @@ func TestWalking(t *testing.T) {
 		if !test.Board.Validate() {
 			t.Fatalf("Test %d is broken:\n%v", i, &test.Board)
 		}
-		visitMatrix, error := test.Board.Walk()
+		visitMatrix, error := test.Board.Walk(test.Solve)
 		if error != nil {
 			t.Errorf("Error in test %d: %v", i, error)
 			continue
@@ -281,7 +329,7 @@ func TestWalkingFallsOffBoard(t *testing.T) {
 	if !board.Validate() {
 		t.Fatal("Test is broken")
 	}
-	_, error := board.Walk()
+	_, error := board.Walk(false)
 	expectedPointStr := image.Pt(1, -1).String()
 	if error == nil || !strings.Contains(error.String(), expectedPointStr) {
 		t.Errorf("Error is %q, expected to contain %s", error, expectedPointStr)

@@ -35,6 +35,8 @@ func Generate(width, height int) board.Board {
 	}
 
 	b := board.New(width, height)
+	*b.Entrance() = image.Pt(rand.Intn(width), 0)
+	*b.Exit() = image.Pt(rand.Intn(width), height-1)
 	boardRectangle := image.Rect(0, 0, width, height)
 	fieldQueue := new(fieldHeap)
 	heap.Init(fieldQueue)
@@ -65,6 +67,9 @@ func Generate(width, height int) board.Board {
 			heap.Push(fieldQueue, fieldHeapElement{coords, rand.Int()})
 		}
 	}
+
+	b.At(b.Entrance().X, b.Entrance().Y).AddDirection(board.N)
+	b.At(b.Exit().X, b.Exit().Y).AddDirection(board.S)
 
 	return b
 }

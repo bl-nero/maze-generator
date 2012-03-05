@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"image"
 	"os"
-	"strings"
 )
 
 type Direction uint8
@@ -115,7 +114,7 @@ type Board interface {
 	At(x, y int) *Field
 	Entrance() *image.Point
 	Exit() *image.Point
-	Walk() ([][]bool, os.Error)
+	Walk(solve bool) ([][]bool, os.Error)
 	String() string
 	PrettyString() string
 	Validate() bool
@@ -236,27 +235,37 @@ func (self *boardImpl) PrettyString() string {
 				buf.WriteString(" ")
 			}*/
 		}
-		buf.WriteString("|\n")
+
+		if row[len(row)-1].Direction()&E != 0 {
+			buf.WriteString(" \n")
+		} else {
+			buf.WriteString("|\n")
+		}
 	}
 
-	buf.WriteString("+")
-	buf.WriteString(strings.Repeat("---", self.Width()-1))
-	buf.WriteString("--+\n")
+	for _, field := range self.fields[len(self.fields)-1] {
+		if field.Direction()&S != 0 {
+			buf.WriteString("+  ")
+		} else {
+			buf.WriteString("+--")
+		}
+	}
+	buf.WriteString("+\n")
 	return buf.String()
 }
 
-func (self *boardImpl) Walk() (visitMatrix [][]bool, error os.Error) {
+func (self *boardImpl) Walk(solve bool) (visitMatrix [][]bool, error os.Error) {
 	visitMatrix = make([][]bool, self.Height())
 	for i := range visitMatrix {
 		visitMatrix[i] = make([]bool, self.Width())
 	}
-	error = self.walkInternal(visitMatrix, *self.Entrance())
+	_, error = self.walkInternal(visitMatrix, *self.Entrance(), solve)
 	return
 }
 
-func (self *boardImpl) walkInternal(visitMatrix [][]bool, p image.Point) os.Error {
+func (self *boardImpl) walkInternal(visitMatrix [][]bool, p image.Point, solve bool) (exitReached bool, error os.Error) {
 	if visitMatrix[p.Y][p.X] {
-		return nil
+		return false, nil
 	}
 	visitMatrix[p.Y][p.X] = true
 	boardRectangle := image.Rect(0, 0, self.Width(), self.Height())
@@ -264,19 +273,27 @@ func (self *boardImpl) walkInternal(visitMatrix [][]bool, p image.Point) os.Erro
 	for _, dir := range directions {
 		delta, error := dir.Delta()
 		if error != nil {
-			return error
+			return false, error
 		}
 		p2 := p.Add(delta)
 		if p2.In(boardRectangle) {
-			error = self.walkInternal(visitMatrix, p2)
+			pathToExit, error := self.walkInternal(visitMatrix, p2, solve)
+			exitReached = exitReached || pathToExit
 			if error != nil {
-				return error
+				return false, error
 			}
 		} else if !p.Eq(*self.Entrance()) && !p.Eq(*self.Exit()) {
-			return os.NewError("Falling out of the board into " + p2.String())
+			return false,
+				os.NewError("Falling out of the board into " + p2.String())
 		}
 	}
-	return nil
+	if p.Eq(*self.Exit()) {
+		exitReached = true
+	}
+	if solve && !exitReached {
+		visitMatrix[p.Y][p.X] = false
+	}
+	return
 }
 
 func (self *boardImpl) Validate() bool {

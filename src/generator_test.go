@@ -42,7 +42,7 @@ func TestGenerating(t *testing.T) {
 	if !board.Validate() {
 		t.Fatalf("Board doesn't validate:\n%v", board)
 	}
-	visitMatrix, error := board.Walk()
+	visitMatrix, error := board.Walk(false)
 	if error != nil {
 		t.Fatalf("Unexpected error: %v. Generated board:\n%v", error, board)
 	}
