@@ -26,12 +26,11 @@ func getIntArg(index int, name string) (val int, error os.Error) {
 }
 
 func drawToFile(b board.Board, fileName string) os.Error {
-	solution, error := b.Walk(true)
-	if error != nil {
-		return error
-	}
-	fmt.Printf("Complexity: %d\n", b.Complexity())
-	img := painter.Paint(b, solution, 10, 2)
+	//solution, error := b.Walk(true)
+	//if error != nil {
+		//return error
+	//}
+	img := painter.Paint(b, nil, 10, 2)
 	file, error := os.Create(fileName)
 	defer file.Close()
 	if error != nil {

@@ -3,6 +3,7 @@ package generator
 import (
 	"container/heap"
 	"image"
+	"rand"
 	"testing"
 	"testutil"
 )
@@ -30,6 +31,7 @@ func TestFieldHeap(t *testing.T) {
 }
 
 func TestGenerating(t *testing.T) {
+	rand.Seed(0)
 	dump := false
 	width, height := 10, 5
 	board := Generate(width, height)
@@ -53,6 +55,13 @@ func TestGenerating(t *testing.T) {
 	}
 	if board.Complexity() == 0 {
 		t.Errorf("Board does not have crossroads")
+		dump = true
+	}
+	exit := *board.Exit()
+	exitRoadCount := len(board.At(exit.X, exit.Y).Direction().Decompose())
+	if exitRoadCount != 2 {
+		t.Errorf("Number of roads coming into exit is %d, expected 2",
+			exitRoadCount)
 		dump = true
 	}
 

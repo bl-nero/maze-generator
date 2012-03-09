@@ -64,7 +64,10 @@ func Generate(width, height int) board.Board {
 			nextField := b.At(nextCoords.X, nextCoords.Y)
 			field.AddDirection(pickedDirection)
 			nextField.AddDirection(pickedDirection.Opposite())
-			heap.Push(fieldQueue, fieldHeapElement{nextCoords, rand.Int()})
+			if !b.Exit().Eq(nextCoords) {
+				heap.Push(fieldQueue,
+					fieldHeapElement{nextCoords, rand.Int()})
+			}
 			heap.Push(fieldQueue, fieldHeapElement{coords, rand.Int()})
 		}
 	}
