@@ -1,0 +1,1 @@
+This is a simple maze generator. More of a Go learning exercise than a "real" application.
